@@ -46,7 +46,7 @@ export const ThemeSwitcher: React.FC = () => {
 
       {open && (
         <div
-          className="absolute right-0 mt-2 w-80 rounded-2xl p-2.5 shadow-2xl z-50 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
+          className="absolute right-0 mt-2 w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] rounded-2xl p-2.5 shadow-2xl z-50 border backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150"
           style={{
             backgroundColor: 'var(--bg-card)',
             borderColor: 'var(--border-subtle)',

@@ -208,7 +208,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-sm">
+          <table className="w-full text-left border-collapse text-sm min-w-[620px]">
             <thead>
               <tr
                 className="border-b font-semibold text-xs uppercase tracking-wider opacity-70"

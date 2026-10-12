@@ -47,31 +47,31 @@ export const Navbar: React.FC<NavbarProps> = ({
         borderColor: 'var(--border-subtle)',
       }}
     >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between">
         {/* Brand */}
         <div
           onClick={() => {
             sounds.playSelect();
             setCurrentView('student-landing');
           }}
-          className="flex items-center space-x-3 cursor-pointer group select-none"
+          className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group select-none min-w-0"
         >
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105"
+            className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 flex-shrink-0"
             style={{
               background: 'linear-gradient(135deg, var(--accent-color) 0%, #6366f1 100%)',
               boxShadow: 'var(--glow-shadow)',
             }}
           >
-            <Zap className="w-5 h-5 text-white fill-current" />
+            <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-white fill-current" />
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-extrabold text-lg tracking-tight" style={{ color: 'var(--text-main)' }}>
+          <div className="min-w-0">
+            <div className="flex items-center space-x-1.5">
+              <span className="font-extrabold text-base sm:text-lg tracking-tight truncate" style={{ color: 'var(--text-main)' }}>
                 QuizArena
               </span>
               <span
-                className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border"
+                className="hidden sm:inline px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-widest border"
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   borderColor: 'var(--border-subtle)',
@@ -81,14 +81,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Enterprise
               </span>
             </div>
-            <p className="text-[11px] opacity-70 -mt-0.5 font-medium" style={{ color: 'var(--text-muted)' }}>
+            <p className="hidden md:block text-[11px] opacity-70 -mt-0.5 font-medium truncate" style={{ color: 'var(--text-muted)' }}>
               Real-Time Synchronized Assessment Platform
             </p>
           </div>
         </div>
 
         {/* Navigation & Controls */}
-        <div className="flex items-center space-x-2 sm:space-x-3">
+        <div className="flex items-center space-x-1.5 sm:space-x-3 flex-shrink-0">
           {/* Main Navigation */}
           <nav className="flex items-center space-x-1 sm:space-x-1.5">
             <button
@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 sounds.playSelect();
                 setCurrentView('student-landing');
               }}
-              className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1 sm:space-x-1.5 ${
                 currentView.startsWith('student')
                   ? 'shadow-sm'
                   : 'opacity-70 hover:opacity-100'
@@ -107,8 +107,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                 border: currentView.startsWith('student') ? '1px solid var(--border-subtle)' : '1px solid transparent',
               }}
             >
-              <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>Candidate Portal</span>
+              <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <span className="hidden sm:inline">Candidate Portal</span>
+              <span className="sm:hidden text-xs">Student</span>
             </button>
 
             {adminLoggedIn ? (
@@ -118,7 +119,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     sounds.playSelect();
                     setCurrentView('admin-dashboard');
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1 sm:space-x-1.5 ${
                     currentView === 'admin-dashboard' || currentView === 'quiz-editor'
                       ? 'shadow-sm'
                       : 'opacity-70 hover:opacity-100'
@@ -135,8 +136,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         : '1px solid transparent',
                   }}
                 >
-                  <LayoutDashboard className="w-4 h-4 text-brand-400" />
-                  <span>Dashboard</span>
+                  <LayoutDashboard className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-brand-400" />
+                  <span className="hidden sm:inline">Dashboard</span>
                 </button>
 
                 <button
@@ -144,7 +145,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     sounds.playSelect();
                     setCurrentView('admin-control-room');
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1 sm:space-x-1.5 ${
                     currentView === 'admin-control-room'
                       ? 'shadow-sm'
                       : 'opacity-70 hover:opacity-100'
@@ -159,8 +160,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         : '1px solid transparent',
                   }}
                 >
-                  <Radio className="w-4 h-4 text-rose-400 animate-pulse" />
-                  <span>Control Room</span>
+                  <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400 animate-pulse" />
+                  <span className="hidden sm:inline">Control Room</span>
                 </button>
 
                 <button
@@ -168,7 +169,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     sounds.playSelect();
                     setCurrentView('admin-analytics');
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1.5 ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center space-x-1 sm:space-x-1.5 ${
                     currentView === 'admin-analytics'
                       ? 'shadow-sm'
                       : 'opacity-70 hover:opacity-100'
@@ -183,8 +184,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         : '1px solid transparent',
                   }}
                 >
-                  <BarChart3 className="w-4 h-4 text-indigo-400" />
-                  <span>Analytics</span>
+                  <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-400" />
+                  <span className="hidden sm:inline">Analytics</span>
                 </button>
 
                 <button
@@ -201,26 +202,27 @@ export const Navbar: React.FC<NavbarProps> = ({
                   sounds.playSelect();
                   setCurrentView('admin-login');
                 }}
-                className="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center space-x-1.5 hover:opacity-90"
+                className="px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold border transition-all flex items-center space-x-1 sm:space-x-1.5 hover:opacity-90"
                 style={{
                   backgroundColor: 'var(--bg-card)',
                   borderColor: 'var(--border-subtle)',
                   color: 'var(--text-main)',
                 }}
               >
-                <Shield className="w-4 h-4 text-amber-400" />
-                <span>Admin Login</span>
+                <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                <span className="hidden sm:inline">Admin Login</span>
+                <span className="sm:hidden text-xs">Admin</span>
               </button>
             )}
           </nav>
 
-          {/* Quick Utility Tools: Shortcuts Guide & Audio FX Toggle */}
+          {/* Quick Utility Tools */}
           <div className="flex items-center space-x-1 pl-1 border-l" style={{ borderColor: 'var(--border-subtle)' }}>
-            {/* Keyboard Shortcuts Trigger */}
+            {/* Keyboard Shortcuts Trigger (Hidden on touch devices) */}
             <button
               onClick={() => setShowShortcuts(true)}
               title="Keyboard Shortcuts Cheat Sheet"
-              className="p-2 rounded-xl text-xs opacity-75 hover:opacity-100 border transition-all hover:scale-105"
+              className="hidden sm:flex p-1.5 sm:p-2 rounded-xl text-xs opacity-75 hover:opacity-100 border transition-all hover:scale-105"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
@@ -234,7 +236,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={handleSoundToggle}
               title={soundEnabled ? 'Mute Interface Sound Effects' : 'Enable Interface Sound Effects'}
-              className="p-2 rounded-xl text-xs opacity-75 hover:opacity-100 border transition-all hover:scale-105"
+              className="p-1.5 sm:p-2 rounded-xl text-xs opacity-75 hover:opacity-100 border transition-all hover:scale-105"
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',

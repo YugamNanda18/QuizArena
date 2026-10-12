@@ -133,16 +133,16 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-12">
+    <div className="max-w-3xl mx-auto px-3 sm:px-4 py-6 sm:py-12">
       <div
-        className="rounded-3xl p-8 sm:p-12 border shadow-2xl text-center relative overflow-hidden backdrop-blur-2xl"
+        className="rounded-3xl p-5 sm:p-8 md:p-12 border shadow-2xl text-center relative overflow-hidden backdrop-blur-2xl"
         style={{
           backgroundColor: 'var(--bg-card)',
           borderColor: 'var(--border-subtle)',
         }}
       >
         {/* Top Radar Pulse Animation */}
-        <div className="relative w-32 h-32 mx-auto mb-6 flex items-center justify-center">
+        <div className="relative w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-4 sm:mb-6 flex items-center justify-center">
           <div
             className="absolute inset-0 rounded-full border-2 border-dashed opacity-40 animate-radar"
             style={{ borderColor: 'var(--accent-color)' }}
@@ -152,19 +152,19 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
             style={{ backgroundColor: 'var(--accent-color)' }}
           />
           <div
-            className="relative w-20 h-20 rounded-2xl border-2 flex items-center justify-center shadow-xl glow-theme"
+            className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 flex items-center justify-center shadow-xl glow-theme"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--accent-color)',
             }}
           >
-            <Clock className="w-10 h-10 animate-pulse" style={{ color: 'var(--accent-color)' }} />
+            <Clock className="w-8 h-8 sm:w-10 sm:h-10 animate-pulse" style={{ color: 'var(--accent-color)' }} />
           </div>
         </div>
 
         {/* Live Server Connection Badge */}
         <div
-          className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full text-xs font-bold border mb-4"
+          className="inline-flex items-center space-x-2 px-3.5 py-1 rounded-full text-[11px] sm:text-xs font-bold border mb-3 sm:mb-4"
           style={{
             backgroundColor: 'var(--bg-surface)',
             borderColor: 'var(--border-subtle)',
@@ -180,18 +180,18 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
           <span>{socketConnected ? 'Real-Time Server Connected' : 'Reconnecting to Server...'}</span>
         </div>
 
-        <h1 className="text-2xl sm:text-4xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
+        <h1 className="text-xl sm:text-3xl md:text-4xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
           Waiting for Proctor to Launch
         </h1>
 
-        <p className="mt-3 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed opacity-75 font-medium" style={{ color: 'var(--text-muted)' }}>
+        <p className="mt-2 sm:mt-3 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed opacity-75 font-medium px-2" style={{ color: 'var(--text-muted)' }}>
           The administrator will start the test from the control console. All candidates will begin at the exact same server-controlled time.
         </p>
 
         {/* Candidate & Assessment Info Cards */}
-        <div className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4 text-left">
+        <div className="mt-6 sm:mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-left">
           <div
-            className="p-4 rounded-2xl border"
+            className="p-3.5 sm:p-4 rounded-2xl border"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -200,7 +200,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
             <span className="text-[10px] font-black uppercase tracking-wider opacity-60 block" style={{ color: 'var(--text-muted)' }}>
               Candidate Identity
             </span>
-            <div className="mt-1 font-black text-base" style={{ color: 'var(--text-main)' }}>
+            <div className="mt-1 font-black text-sm sm:text-base truncate" style={{ color: 'var(--text-main)' }}>
               {participant.name}
             </div>
             <div className="text-xs opacity-75 truncate" style={{ color: 'var(--text-muted)' }}>
@@ -214,7 +214,7 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
           </div>
 
           <div
-            className="p-4 rounded-2xl border"
+            className="p-3.5 sm:p-4 rounded-2xl border"
             style={{
               backgroundColor: 'var(--bg-surface)',
               borderColor: 'var(--border-subtle)',
@@ -223,10 +223,10 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
             <span className="text-[10px] font-black uppercase tracking-wider opacity-60 block" style={{ color: 'var(--text-muted)' }}>
               Assessment Room
             </span>
-            <div className="mt-1 font-black text-base truncate" style={{ color: 'var(--text-main)' }}>
+            <div className="mt-1 font-black text-sm sm:text-base truncate" style={{ color: 'var(--text-main)' }}>
               {quiz.title}
             </div>
-            <div className="flex items-center space-x-2 mt-1 text-xs opacity-75" style={{ color: 'var(--text-muted)' }}>
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1 text-xs opacity-75" style={{ color: 'var(--text-muted)' }}>
               <span className="font-mono font-bold" style={{ color: 'var(--accent-color)' }}>Room: {quiz.roomCode}</span>
               <span>•</span>
               <span>{quiz.durationMinutes} Mins</span>
@@ -238,15 +238,15 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
 
         {/* Connected Candidates Counter */}
         <div
-          className="mt-6 p-4 rounded-2xl border flex items-center justify-between"
+          className="mt-4 sm:mt-6 p-3.5 sm:p-4 rounded-2xl border flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left"
           style={{
             backgroundColor: 'var(--bg-surface)',
             borderColor: 'var(--border-subtle)',
           }}
         >
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 w-full sm:w-auto justify-center sm:justify-start">
             <div
-              className="w-10 h-10 rounded-xl border flex items-center justify-center"
+              className="w-10 h-10 rounded-xl border flex items-center justify-center flex-shrink-0"
               style={{
                 backgroundColor: 'var(--bg-card)',
                 borderColor: 'var(--border-subtle)',
@@ -256,10 +256,10 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
               <Users className="w-5 h-5" />
             </div>
             <div className="text-left">
-              <span className="text-[11px] opacity-60 block" style={{ color: 'var(--text-muted)' }}>
+              <span className="text-[10px] sm:text-[11px] opacity-60 block" style={{ color: 'var(--text-muted)' }}>
                 Live Candidates in Room
               </span>
-              <span className="text-sm font-black" style={{ color: 'var(--text-main)' }}>
+              <span className="text-xs sm:text-sm font-black" style={{ color: 'var(--text-main)' }}>
                 {connectedCount} Connected Online
               </span>
             </div>
@@ -271,8 +271,8 @@ export const WaitingRoom: React.FC<WaitingRoomProps> = ({
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-center space-x-2 text-xs opacity-60" style={{ color: 'var(--text-muted)' }}>
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+        <div className="mt-4 sm:mt-6 flex items-center justify-center space-x-2 text-[11px] sm:text-xs opacity-60 text-center" style={{ color: 'var(--text-muted)' }}>
+          <ShieldCheck className="w-4 h-4 text-emerald-400 flex-shrink-0" />
           <span>Encrypted questions will decrypt automatically upon administrator launch.</span>
         </div>
       </div>

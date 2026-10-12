@@ -298,10 +298,10 @@ export const App: React.FC = () => {
           color: 'var(--text-muted)',
         }}
       >
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span className="font-medium">QuizArena Enterprise™ • Real-Time Assessment & Live Leaderboard Engine</span>
-          <div className="flex items-center space-x-4">
-            <span style={{ color: 'var(--text-main)' }}>Node.js + MongoDB + Socket.IO + React + Vitest</span>
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-center sm:text-left">
+          <span className="font-medium text-[11px] sm:text-xs">QuizArena Enterprise™ • Real-Time Assessment Engine</span>
+          <div className="flex flex-wrap items-center justify-center gap-2 text-[11px] sm:text-xs">
+            <span style={{ color: 'var(--text-main)' }}>Socket.IO + React + Vitest</span>
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
             <span className="font-semibold text-emerald-400">High-Availability Ready</span>
           </div>

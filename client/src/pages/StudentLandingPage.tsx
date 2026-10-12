@@ -238,9 +238,9 @@ export const StudentLandingPage: React.FC<StudentLandingPageProps> = ({
         </p>
 
         {/* Mode Selector Tabs: New Registration vs Resume Assessment */}
-        <div className="pt-2 flex justify-center">
+        <div className="pt-2 flex justify-center w-full">
           <div
-            className="inline-flex p-1.5 rounded-2xl border shadow-md"
+            className="grid grid-cols-2 sm:inline-flex p-1 sm:p-1.5 rounded-2xl border shadow-md w-full sm:w-auto max-w-md"
             style={{
               backgroundColor: 'var(--bg-card)',
               borderColor: 'var(--border-subtle)',
@@ -252,7 +252,7 @@ export const StudentLandingPage: React.FC<StudentLandingPageProps> = ({
                 setActiveTab('register');
                 sounds.playSelect();
               }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center space-x-2 ${
+              className={`px-2.5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 ${
                 activeTab === 'register'
                   ? 'text-white shadow-md'
                   : 'opacity-60 hover:opacity-100'
@@ -263,8 +263,9 @@ export const StudentLandingPage: React.FC<StudentLandingPageProps> = ({
                 color: activeTab === 'register' ? '#ffffff' : 'var(--text-main)',
               }}
             >
-              <User className="w-4 h-4" />
-              <span>Register New Candidate</span>
+              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Register New Candidate</span>
+              <span className="sm:hidden text-[11px]">New Register</span>
             </button>
 
             <button
@@ -273,7 +274,7 @@ export const StudentLandingPage: React.FC<StudentLandingPageProps> = ({
                 setActiveTab('resume');
                 sounds.playSelect();
               }}
-              className={`px-4 sm:px-6 py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center space-x-2 ${
+              className={`px-2.5 sm:px-6 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-black transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 ${
                 activeTab === 'resume'
                   ? 'text-white shadow-md'
                   : 'opacity-60 hover:opacity-100'
@@ -284,8 +285,9 @@ export const StudentLandingPage: React.FC<StudentLandingPageProps> = ({
                 color: activeTab === 'resume' ? '#ffffff' : 'var(--text-main)',
               }}
             >
-              <LogIn className="w-4 h-4" />
-              <span>Resume Active Test</span>
+              <LogIn className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
+              <span className="hidden sm:inline">Resume Active Test</span>
+              <span className="sm:hidden text-[11px]">Resume Test</span>
             </button>
           </div>
         </div>
