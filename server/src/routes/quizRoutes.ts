@@ -6,6 +6,7 @@ import {
   createQuiz,
   updateQuiz,
   updateQuizStatus,
+  restartQuiz,
   duplicateQuiz,
   deleteQuiz,
 } from '../controllers/quizController';
@@ -24,6 +25,7 @@ router.get('/', requireAuth, requireAdmin, listQuizzes);
 router.post('/', requireAuth, requireAdmin, createQuiz);
 router.put('/:id', requireAuth, requireAdmin, updateQuiz);
 router.patch('/:id/status', requireAuth, requireAdmin, updateQuizStatus);
+router.post('/:id/restart', requireAuth, requireAdmin, restartQuiz);
 router.post('/:id/duplicate', requireAuth, requireAdmin, duplicateQuiz);
 router.delete('/:id', requireAuth, requireAdmin, deleteQuiz);
 

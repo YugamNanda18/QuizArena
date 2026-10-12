@@ -2,14 +2,26 @@ import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
 
+function resolveSocketUrl(): string {
+  if (import.meta.env.VITE_SOCKET_URL) {
+    return import.meta.env.VITE_SOCKET_URL;
+  }
+  const apiUrl = import.meta.env.VITE_API_URL;
+  if (apiUrl) {
+    // Strip trailing /api/v1 or trailing slashes to connect to server origin
+    return apiUrl.replace(/\/api\/v1\/?$/, '').replace(/\/+$/, '');
+  }
+  return typeof window !== 'undefined' ? window.location.origin : '/';
+}
+
 export function getSocket(): Socket {
   if (!socket) {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || '/';
+    const socketUrl = resolveSocketUrl();
     socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 15,
       reconnectionDelay: 1000,
     });
   }

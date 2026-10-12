@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../services/api';
 import { Quiz } from '../types';
-import { Plus, Radio, Edit3, Copy, BarChart2, Trash2, Clock, HelpCircle, Award, Users, CheckCircle2, Share2, Check, Search, Sparkles } from 'lucide-react';
+import { Plus, Radio, Edit3, Copy, BarChart2, Trash2, Clock, HelpCircle, Award, Users, CheckCircle2, Share2, Check, Search, Sparkles, RotateCcw, RefreshCw, X, Play } from 'lucide-react';
 import { ShareRoomModal } from '../components/ShareRoomModal';
 
 interface AdminDashboardProps {
@@ -23,6 +23,28 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [shareModalQuiz, setShareModalQuiz] = useState<Quiz | null>(null);
+  const [restartModalQuiz, setRestartModalQuiz] = useState<Quiz | null>(null);
+  const [restartLoading, setRestartLoading] = useState(false);
+  const [extraDuration, setExtraDuration] = useState<number>(15);
+
+  const handleRestartQuiz = async (mode: 'reopen' | 'waiting' | 'clean-restart') => {
+    if (!restartModalQuiz) return;
+    const qId = (restartModalQuiz._id || restartModalQuiz.id) as string;
+    setRestartLoading(true);
+    try {
+      await api.quiz.restart(qId, {
+        mode,
+        extraMinutes: extraDuration > 0 ? extraDuration : restartModalQuiz.durationMinutes,
+        resetAnswers: mode === 'clean-restart',
+      });
+      setRestartModalQuiz(null);
+      await fetchDashboardData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to restart assessment');
+    } finally {
+      setRestartLoading(false);
+    }
+  };
 
   const fetchDashboardData = async () => {
     try {
@@ -342,6 +364,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                           </button>
 
                           <button
+                            onClick={() => {
+                              setRestartModalQuiz(quiz);
+                              setExtraDuration(quiz.durationMinutes || 15);
+                            }}
+                            title="Restart / Reopen Assessment"
+                            className={`p-1.5 rounded-xl border transition-all ${
+                              quiz.status === 'COMPLETED'
+                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/20 shadow-sm'
+                                : 'opacity-70 hover:opacity-100 hover:text-amber-400'
+                            }`}
+                            style={{
+                              backgroundColor: quiz.status === 'COMPLETED' ? undefined : 'var(--bg-surface)',
+                              borderColor: quiz.status === 'COMPLETED' ? undefined : 'var(--border-subtle)',
+                            }}
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+
+                          <button
                             onClick={() => onEditQuiz(qId)}
                             title="Edit Questions & Dynamic Points"
                             className="p-1.5 rounded-xl border opacity-70 hover:opacity-100 transition-opacity"
@@ -410,6 +451,142 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           roomCode={shareModalQuiz.roomCode}
           title={shareModalQuiz.title}
         />
+      )}
+
+      {/* Restart / Reopen Assessment Modal */}
+      {restartModalQuiz && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div
+            className="max-w-md w-full rounded-3xl p-6 sm:p-8 border shadow-2xl relative space-y-5"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              borderColor: 'var(--border-subtle)',
+            }}
+          >
+            <button
+              onClick={() => setRestartModalQuiz(null)}
+              className="absolute top-5 right-5 p-2 rounded-xl border opacity-60 hover:opacity-100 transition-opacity"
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-main)',
+              }}
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="text-center space-y-1 pr-6">
+              <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center border shadow-md mb-2 bg-emerald-500/15 border-emerald-500/30 text-emerald-400">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <h3 className="text-xl font-black" style={{ color: 'var(--text-main)' }}>
+                Restart / Reopen Assessment
+              </h3>
+              <p className="text-xs opacity-75" style={{ color: 'var(--text-muted)' }}>
+                {restartModalQuiz.title} (Room: <strong className="font-mono text-amber-400">{restartModalQuiz.roomCode}</strong>)
+              </p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs leading-relaxed">
+              💡 <strong>Mistake Recovery:</strong> If this quiz was ended accidentally, click <strong>"Reopen Assessment"</strong> to resume the LIVE test and allow all candidates to continue answering questions without losing their progress.
+            </div>
+
+            {/* Options */}
+            <div className="space-y-3">
+              {/* Option 1: Reopen LIVE */}
+              <div
+                className="p-4 rounded-2xl border space-y-2.5 transition-all hover:border-emerald-500/50"
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Play className="w-3.5 h-3.5 fill-current" />
+                    <span>Option 1: Reopen to LIVE Test</span>
+                  </span>
+                  <span className="text-[10px] font-mono opacity-60">Undo End</span>
+                </div>
+                <p className="text-xs opacity-75 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  Restores candidate sessions to in-progress. Preserves previously answered questions and resumes countdown timer.
+                </p>
+                <div className="flex items-center space-x-2 pt-1">
+                  <label className="text-xs font-semibold whitespace-nowrap opacity-80" style={{ color: 'var(--text-main)' }}>
+                    Extend Duration (Mins):
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={180}
+                    value={extraDuration}
+                    onChange={(e) => setExtraDuration(Math.max(1, Number(e.target.value)))}
+                    className="w-20 px-2.5 py-1 text-xs rounded-xl border font-mono font-bold"
+                    style={{ backgroundColor: 'var(--bg-card)', borderColor: 'var(--border-subtle)', color: 'var(--text-main)' }}
+                  />
+                </div>
+                <button
+                  disabled={restartLoading}
+                  onClick={() => handleRestartQuiz('reopen')}
+                  className="w-full mt-2 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider shadow-md transition-all hover:scale-[1.01] disabled:opacity-50"
+                >
+                  {restartLoading ? 'Reopening Exam...' : 'Reopen Exam (Resume LIVE)'}
+                </button>
+              </div>
+
+              {/* Option 2: Reset to Waiting Room */}
+              <div
+                className="p-4 rounded-2xl border space-y-2 transition-all hover:border-amber-500/50"
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+                    <Users className="w-3.5 h-3.5" />
+                    <span>Option 2: Reset to Waiting Room</span>
+                  </span>
+                  <span className="text-[10px] font-mono opacity-60">Synchronized</span>
+                </div>
+                <p className="text-xs opacity-75 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  Transitions assessment back to Waiting Room. Keeps candidate identities so proctor can relaunch synchronously.
+                </p>
+                <button
+                  disabled={restartLoading}
+                  onClick={() => handleRestartQuiz('waiting')}
+                  className="w-full py-2.5 px-4 rounded-xl border text-amber-400 font-bold text-xs uppercase tracking-wider transition-all hover:bg-amber-500/10 disabled:opacity-50"
+                  style={{ borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                >
+                  {restartLoading ? 'Resetting...' : 'Reset to Waiting Room'}
+                </button>
+              </div>
+
+              {/* Option 3: Clean Restart */}
+              <div
+                className="p-4 rounded-2xl border space-y-2 transition-all hover:border-rose-500/50"
+                style={{ backgroundColor: 'var(--bg-surface)', borderColor: 'var(--border-subtle)' }}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-extrabold text-xs text-rose-400 uppercase tracking-wider flex items-center space-x-1.5">
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Option 3: Full Clean Reset</span>
+                  </span>
+                  <span className="text-[10px] font-mono opacity-60 text-rose-400">Clear Data</span>
+                </div>
+                <p className="text-xs opacity-75 leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+                  Clears all student submitted answers & scores. Resets leaderboard to zero for a clean re-take.
+                </p>
+                <button
+                  disabled={restartLoading}
+                  onClick={() => {
+                    if (confirm('Clear all student answers & scores for a clean restart?')) {
+                      handleRestartQuiz('clean-restart');
+                    }
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl border text-rose-400 font-bold text-xs uppercase tracking-wider transition-all hover:bg-rose-500/10 disabled:opacity-50"
+                  style={{ borderColor: 'rgba(244, 63, 94, 0.4)' }}
+                >
+                  {restartLoading ? 'Clearing...' : 'Full Clean Reset & Restart'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

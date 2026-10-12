@@ -57,10 +57,15 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(payload),
       }),
-    updateStatus: (id: string, status: string) =>
+    updateStatus: (id: string, status: string, options?: { extraMinutes?: number; resetAnswers?: boolean }) =>
       request<{ success: boolean; quiz: Quiz }>(`/quizzes/${id}/status`, {
         method: 'PATCH',
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, ...options }),
+      }),
+    restart: (id: string, options: { mode?: 'reopen' | 'waiting' | 'clean-restart'; extraMinutes?: number; resetAnswers?: boolean } = {}) =>
+      request<{ success: boolean; quiz: Quiz }>(`/quizzes/${id}/restart`, {
+        method: 'POST',
+        body: JSON.stringify(options),
       }),
     duplicate: (id: string) =>
       request<{ success: boolean; quiz: Quiz }>(`/quizzes/${id}/duplicate`, {

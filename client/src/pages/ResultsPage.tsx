@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
+import { getSocket, joinQuizRoom } from '../services/socket';
 import { StudentResultResponse, LeaderboardEntry } from '../types';
 import { LeaderboardTable } from '../components/LeaderboardTable';
 import {
@@ -21,24 +22,28 @@ import {
   AlertCircle,
   RefreshCw,
   Send,
+  Play,
 } from 'lucide-react';
 
 interface ResultsPageProps {
   quizId: string;
   participantId: string;
   onBackToHome: () => void;
+  onReturnToExam?: () => void;
 }
 
 export const ResultsPage: React.FC<ResultsPageProps> = ({
   quizId,
   participantId,
   onBackToHome,
+  onReturnToExam,
 }) => {
   const [result, setResult] = useState<StudentResultResponse | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'summary' | 'review' | 'leaderboard'>('summary');
   const [loading, setLoading] = useState<boolean>(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isTestReopened, setIsTestReopened] = useState<boolean>(false);
 
   const loadResult = async () => {
     setLoading(true);
@@ -52,7 +57,9 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
       // Normalize server response (supports both { result: ... } and direct object)
       const actualResult: StudentResultResponse = (resData as any)?.result || resData;
       setResult(actualResult);
-      setLeaderboard(lbData?.leaderboard || []);
+      if (Array.isArray(lbData?.leaderboard)) {
+        setLeaderboard(lbData.leaderboard);
+      }
 
       // Trigger party poppers celebration
       try {
@@ -74,6 +81,61 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
 
   useEffect(() => {
     loadResult();
+
+    const socket = getSocket();
+
+    // 1. Join quiz room immediately
+    joinQuizRoom(quizId, participantId, 'student');
+
+    const handleConnect = () => {
+      joinQuizRoom(quizId, participantId, 'student');
+    };
+    socket.on('connect', handleConnect);
+
+    // 2. Real-time automatic leaderboard listener
+    const handleLeaderboard = (data: { leaderboard: LeaderboardEntry[] }) => {
+      if (Array.isArray(data?.leaderboard)) {
+        setLeaderboard(data.leaderboard);
+      }
+    };
+    socket.on('leaderboard:updated', handleLeaderboard);
+
+    // 3. Listen for quiz reopen / restart events from proctor
+    const handleReopen = (data?: any) => {
+      setIsTestReopened(true);
+      if (onReturnToExam) {
+        setTimeout(() => {
+          onReturnToExam();
+        }, 1500);
+      }
+    };
+    socket.on('quiz:started', handleReopen);
+    socket.on('quiz:resumed', handleReopen);
+    socket.on('quiz:status', (data: { status: string }) => {
+      if (data?.status === 'LIVE' || data?.status === 'WAITING') {
+        handleReopen();
+      }
+    });
+
+    // 4. Silent 3.5s background polling fallback for real-time leaderboard auto-updating
+    const pollInterval = setInterval(() => {
+      api.leaderboard.get(quizId)
+        .then((lbData) => {
+          if (Array.isArray(lbData?.leaderboard)) {
+            setLeaderboard(lbData.leaderboard);
+          }
+        })
+        .catch(() => {});
+    }, 3500);
+
+    return () => {
+      clearInterval(pollInterval);
+      socket.off('connect', handleConnect);
+      socket.off('leaderboard:updated', handleLeaderboard);
+      socket.off('quiz:started', handleReopen);
+      socket.off('quiz:resumed', handleReopen);
+      socket.off('quiz:status');
+    };
   }, [quizId, participantId]);
 
   if (loading) {
@@ -166,6 +228,45 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           <span>Back to Candidate Portal</span>
         </button>
       </div>
+
+      {/* Proctor Reopened Assessment Notice */}
+      {isTestReopened && (
+        <div
+          className="p-4 sm:p-5 rounded-3xl border flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl animate-in fade-in slide-in-from-top-3"
+          style={{
+            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.25) 0%, rgba(37, 99, 235, 0.25) 100%)',
+            borderColor: '#10b981',
+          }}
+        >
+          <div className="flex items-center space-x-3.5 text-left">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center flex-shrink-0 font-bold shadow-lg animate-pulse">
+              <Play className="w-6 h-6 fill-current" />
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center space-x-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span>Assessment Reopened by Proctor</span>
+              </div>
+              <h3 className="text-base sm:text-lg font-black mt-0.5 text-white">
+                Exam Resumed! You can continue answering.
+              </h3>
+              <p className="text-xs opacity-80" style={{ color: 'var(--text-muted)' }}>
+                The administrator has reopened this test session. Your previous answers are preserved.
+              </p>
+            </div>
+          </div>
+
+          {onReturnToExam && (
+            <button
+              onClick={onReturnToExam}
+              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-xl flex items-center space-x-1.5 transition-transform hover:scale-105"
+            >
+              <span>Return to Exam Now</span>
+              <Play className="w-3.5 h-3.5 fill-current" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Prominent Submission Confirmation Badge */}
       <div

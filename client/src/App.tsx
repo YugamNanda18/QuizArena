@@ -220,6 +220,27 @@ export const App: React.FC = () => {
               quizId={activeQuizId}
               participantId={activeParticipantId}
               onBackToHome={() => setCurrentView('student-landing')}
+              onReturnToExam={() => {
+                api.registration
+                  .getStatus(activeParticipantId)
+                  .then((res) => {
+                    const qId = (res.quiz.id || res.quiz._id) as string;
+                    const pId = (res.participant.id || res.participant._id) as string;
+                    setActiveQuizId(qId);
+                    setActiveParticipantId(pId);
+                    setActiveQuiz(res.quiz);
+                    setActiveParticipant(res.participant);
+                    localStorage.setItem('qa_student_session', JSON.stringify({ quizId: qId, participantId: pId }));
+                    if (res.quiz.status === 'LIVE' || res.participant.status === 'IN_PROGRESS') {
+                      setCurrentView('student-exam');
+                    } else if (res.quiz.status === 'WAITING') {
+                      setCurrentView('student-waiting');
+                    }
+                  })
+                  .catch(() => {
+                    setCurrentView('student-exam');
+                  });
+              }}
             />
           ) : (
             <StudentLandingPage

@@ -151,24 +151,41 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
       onCompleted();
     });
 
-    socket.on('leaderboard:updated', (data: { leaderboard: any[] }) => {
+    const handleLeaderboard = (data: { leaderboard: any[] }) => {
+      if (!Array.isArray(data?.leaderboard)) return;
       const myId = (participant.id || participant._id) as string;
-      const myRow = data.leaderboard?.find((r: any) => r.id === myId || r.participantId === myId);
+      const myRow = data.leaderboard.find((r: any) => r.id === myId || r.participantId === myId);
       if (myRow) {
-        setCurrentRank(myRow.rank);
-        if (typeof myRow.score === 'number') {
-          setCurrentScore(myRow.score);
+        if (typeof myRow.rank === 'number') {
+          setCurrentRank(myRow.rank);
+        }
+        const scoreVal = typeof myRow.totalScore === 'number' ? myRow.totalScore : myRow.score;
+        if (typeof scoreVal === 'number') {
+          setCurrentScore(scoreVal);
         }
       }
-    });
+    };
+    socket.on('leaderboard:updated', handleLeaderboard);
+
+    // Silent periodic rank & score sync fallback
+    const pollInterval = setInterval(() => {
+      api.leaderboard.get(quizId)
+        .then((res) => {
+          if (Array.isArray(res?.leaderboard)) {
+            handleLeaderboard({ leaderboard: res.leaderboard });
+          }
+        })
+        .catch(() => {});
+    }, 4000);
 
     return () => {
+      clearInterval(pollInterval);
       socket.off('connect', handleConnect);
       socket.off('server:time');
       socket.off('quiz:paused');
       socket.off('quiz:resumed');
       socket.off('quiz:ended');
-      socket.off('leaderboard:updated');
+      socket.off('leaderboard:updated', handleLeaderboard);
     };
   }, [quiz.id, quiz._id, participant.id, participant._id]);
 

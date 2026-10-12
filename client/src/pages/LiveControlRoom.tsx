@@ -4,7 +4,7 @@ import { getSocket, joinQuizRoom } from '../services/socket';
 import { Quiz, Participant, LeaderboardEntry } from '../types';
 import { LeaderboardTable } from '../components/LeaderboardTable';
 import { ShareRoomModal } from '../components/ShareRoomModal';
-import { Radio, Play, Pause, Square, Users, Clock, ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Share2, Check, Sparkles } from 'lucide-react';
+import { Radio, Play, Pause, Square, Users, Clock, ArrowLeft, RefreshCw, AlertTriangle, ShieldCheck, Share2, Check, Sparkles, RotateCcw } from 'lucide-react';
 
 interface LiveControlRoomProps {
   quizId: string;
@@ -42,8 +42,14 @@ export const LiveControlRoom: React.FC<LiveControlRoomProps> = ({ quizId, onBack
     fetchRoomState();
 
     const socket = getSocket();
+
+    // 1. Join room immediately on mount
+    joinQuizRoom(quizId, undefined, 'admin');
+
+    // 2. Re-join on reconnect
     const handleConnect = () => {
       joinQuizRoom(quizId, undefined, 'admin');
+      fetchRoomState();
     };
     socket.on('connect', handleConnect);
 
@@ -55,9 +61,12 @@ export const LiveControlRoom: React.FC<LiveControlRoomProps> = ({ quizId, onBack
       fetchRoomState();
     });
 
-    socket.on('leaderboard:updated', (data: { leaderboard: LeaderboardEntry[] }) => {
-      setLeaderboard(data.leaderboard);
-    });
+    const handleLeaderboard = (data: { leaderboard: LeaderboardEntry[] }) => {
+      if (Array.isArray(data?.leaderboard)) {
+        setLeaderboard(data.leaderboard);
+      }
+    };
+    socket.on('leaderboard:updated', handleLeaderboard);
 
     socket.on('quiz:started', () => {
       fetchRoomState();
@@ -67,13 +76,30 @@ export const LiveControlRoom: React.FC<LiveControlRoomProps> = ({ quizId, onBack
       fetchRoomState();
     });
 
+    socket.on('quiz:status', () => {
+      fetchRoomState();
+    });
+
+    // 3. Silent auto-sync fallback every 3.5s to ensure realtime standings even if websocket packets drop
+    const pollInterval = setInterval(() => {
+      api.leaderboard.get(quizId)
+        .then((res) => {
+          if (Array.isArray(res?.leaderboard)) {
+            setLeaderboard(res.leaderboard);
+          }
+        })
+        .catch(() => {});
+    }, 3500);
+
     return () => {
+      clearInterval(pollInterval);
       socket.off('connect', handleConnect);
       socket.off('participant:count');
       socket.off('participant:joined');
-      socket.off('leaderboard:updated');
+      socket.off('leaderboard:updated', handleLeaderboard);
       socket.off('quiz:started');
       socket.off('quiz:ended');
+      socket.off('quiz:status');
     };
   }, [quizId]);
 
@@ -283,6 +309,86 @@ export const LiveControlRoom: React.FC<LiveControlRoomProps> = ({ quizId, onBack
               <Play className="w-4 h-4" />
               <span>Resume Test</span>
             </button>
+          ) : null}
+
+          {quiz.status === 'COMPLETED' ? (
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                disabled={actionLoading}
+                onClick={async () => {
+                  if (confirm(`Reopen assessment? This will restore the exam to LIVE with ${quiz.durationMinutes} minutes, allowing candidates to resume answering.`)) {
+                    setActionLoading(true);
+                    try {
+                      const res = await api.quiz.restart(quizId, { mode: 'reopen', extraMinutes: quiz.durationMinutes });
+                      setQuiz(res.quiz);
+                      await fetchRoomState();
+                    } catch (err: any) {
+                      alert(err.message || 'Failed to reopen quiz');
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }
+                }}
+                className="px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider shadow-lg flex items-center space-x-1.5 transition-transform hover:scale-105"
+                title="Undo accidental completion and resume LIVE test"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Reopen Exam (Resume LIVE)</span>
+              </button>
+
+              <button
+                disabled={actionLoading}
+                onClick={async () => {
+                  if (confirm('Reset assessment to Waiting Room? Candidates will re-enter the waiting room before proctor relaunch.')) {
+                    setActionLoading(true);
+                    try {
+                      const res = await api.quiz.restart(quizId, { mode: 'waiting' });
+                      setQuiz(res.quiz);
+                      await fetchRoomState();
+                    } catch (err: any) {
+                      alert(err.message || 'Failed to reset quiz');
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }
+                }}
+                className="px-4 py-2.5 rounded-2xl border text-amber-400 font-bold text-xs uppercase tracking-wider shadow-md flex items-center space-x-1.5 transition-colors hover:bg-amber-500/10"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'rgba(245, 158, 11, 0.4)',
+                }}
+              >
+                <Users className="w-4 h-4" />
+                <span>Reset to Waiting Room</span>
+              </button>
+
+              <button
+                disabled={actionLoading}
+                onClick={async () => {
+                  if (confirm('Full Clean Reset? WARNING: This will clear all previous candidate scores & answers and send the quiz back to the waiting room for a fresh re-take!')) {
+                    setActionLoading(true);
+                    try {
+                      const res = await api.quiz.restart(quizId, { mode: 'clean-restart', resetAnswers: true });
+                      setQuiz(res.quiz);
+                      await fetchRoomState();
+                    } catch (err: any) {
+                      alert(err.message || 'Failed to reset quiz');
+                    } finally {
+                      setActionLoading(false);
+                    }
+                  }
+                }}
+                className="px-3.5 py-2.5 rounded-2xl border text-rose-400 font-bold text-xs uppercase tracking-wider shadow-md flex items-center space-x-1.5 transition-colors hover:bg-rose-500/10"
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'rgba(244, 63, 94, 0.4)',
+                }}
+                title="Wipe previous scores and restart from scratch"
+              >
+                <RotateCcw className="w-4 h-4" />
+                <span>Full Clean Reset</span>
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

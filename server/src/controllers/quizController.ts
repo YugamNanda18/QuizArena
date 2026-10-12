@@ -2,11 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { Quiz, IQuiz } from '../models/Quiz';
 import { Question } from '../models/Question';
 import { Participant } from '../models/Participant';
+import { Answer } from '../models/Answer';
 import { AuditLog } from '../models/AuditLog';
 import { AppError } from '../middleware/errorHandler';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { createQuizSchema, updateQuizSchema } from '../validators/schemas';
 import { getIO } from '../socket/socketHandler';
+import { LeaderboardService } from '../services/leaderboardService';
 
 function generateRoomCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -141,7 +143,7 @@ export async function updateQuiz(req: AuthenticatedRequest, res: Response, next:
 export async function updateQuizStatus(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, extraMinutes, resetAnswers } = req.body;
     const quiz = await Quiz.findById(id);
     if (!quiz) throw new AppError('Quiz not found', 404);
 
@@ -152,29 +154,72 @@ export async function updateQuizStatus(req: AuthenticatedRequest, res: Response,
       quiz.status = 'PUBLISHED';
     } else if (status === 'WAITING') {
       quiz.status = 'WAITING';
+      quiz.completedAt = undefined;
+      quiz.pausedAt = undefined;
+      quiz.pauseRemainingSeconds = undefined;
+
+      if (resetAnswers) {
+        await Answer.deleteMany({ quizId: quiz._id });
+        await Participant.updateMany(
+          { quizId: quiz._id },
+          {
+            $set: {
+              status: 'WAITING',
+              totalScore: 0,
+              baseScore: 0,
+              bonusScore: 0,
+              rank: 0,
+              correctCount: 0,
+              incorrectCount: 0,
+              unansweredCount: 0,
+              cumulativeResponseTimeMs: 0,
+              startedAt: undefined,
+              completedAt: undefined,
+            },
+          }
+        );
+      } else {
+        await Participant.updateMany(
+          { quizId: quiz._id },
+          { $set: { status: 'WAITING', completedAt: undefined } }
+        );
+      }
+
       if (io) {
-        io.to(`quiz:${quiz._id}`).emit('quiz:status', { status: 'WAITING', quizId: quiz._id });
+        io.to(`quiz:${quiz._id}`).emit('quiz:status', { status: 'WAITING', quizId: quiz._id, isReset: true });
+        await LeaderboardService.broadcastLeaderboard(io, quiz._id.toString());
       }
     } else if (status === 'LIVE') {
-      if (quiz.status !== 'WAITING' && quiz.status !== 'PUBLISHED') {
-        throw new AppError(`Cannot start quiz from ${quiz.status} status. Quiz must be in WAITING room state first.`, 400);
-      }
+      const isReopen = quiz.status === 'COMPLETED';
       const now = new Date();
-      const deadline = new Date(now.getTime() + quiz.durationMinutes * 60 * 1000);
-      quiz.status = 'LIVE';
-      quiz.actualStartTime = now;
-      quiz.deadline = deadline;
+      const durationMins = extraMinutes && extraMinutes > 0 ? Number(extraMinutes) : quiz.durationMinutes;
+      const deadline = new Date(now.getTime() + durationMins * 60 * 1000);
 
-      // Update waiting participants to IN_PROGRESS
-      await Participant.updateMany({ quizId: quiz._id, status: 'WAITING' }, { $set: { status: 'IN_PROGRESS', startedAt: now } });
+      quiz.status = 'LIVE';
+      if (!quiz.actualStartTime || isReopen) {
+        quiz.actualStartTime = now;
+      }
+      quiz.deadline = deadline;
+      quiz.completedAt = undefined;
+      quiz.pausedAt = undefined;
+      quiz.pauseRemainingSeconds = undefined;
+
+      // Update participants: restore any waiting or prematurely completed participants to IN_PROGRESS
+      await Participant.updateMany(
+        { quizId: quiz._id, status: { $in: ['WAITING', 'COMPLETED'] } },
+        { $set: { status: 'IN_PROGRESS', startedAt: now, completedAt: undefined } }
+      );
 
       if (io) {
         io.to(`quiz:${quiz._id}`).emit('quiz:started', {
           quizId: quiz._id,
           startTime: now.toISOString(),
           deadline: deadline.toISOString(),
-          durationMinutes: quiz.durationMinutes,
+          durationMinutes: durationMins,
+          isReopened: isReopen,
         });
+        io.to(`quiz:${quiz._id}`).emit('quiz:status', { status: 'LIVE', quizId: quiz._id, isReopened: isReopen });
+        await LeaderboardService.broadcastLeaderboard(io, quiz._id.toString());
       }
     } else if (status === 'PAUSED') {
       if (quiz.status !== 'LIVE') throw new AppError('Only live quizzes can be paused', 400);
@@ -211,6 +256,7 @@ export async function updateQuizStatus(req: AuthenticatedRequest, res: Response,
 
       if (io) {
         io.to(`quiz:${quiz._id}`).emit('quiz:ended', { quizId: quiz._id, completedAt: quiz.completedAt.toISOString() });
+        await LeaderboardService.broadcastLeaderboard(io, quiz._id.toString());
       }
     } else {
       throw new AppError(`Invalid status transition to ${status}`, 400);
@@ -225,6 +271,107 @@ export async function updateQuizStatus(req: AuthenticatedRequest, res: Response,
       targetResource: 'Quiz',
       targetId: quiz._id.toString(),
       metadata: { oldStatus, newStatus: quiz.status },
+    });
+
+    res.json({ success: true, quiz });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function restartQuiz(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { id } = req.params;
+    const { mode, extraMinutes, resetAnswers } = req.body; // mode: 'reopen' | 'waiting' | 'clean-restart'
+    const quiz = await Quiz.findById(id);
+    if (!quiz) throw new AppError('Quiz not found', 404);
+
+    const io = getIO();
+
+    if (mode === 'waiting' || mode === 'clean-restart') {
+      quiz.status = 'WAITING';
+      quiz.completedAt = undefined;
+      quiz.pausedAt = undefined;
+      quiz.pauseRemainingSeconds = undefined;
+      quiz.actualStartTime = undefined;
+      quiz.deadline = undefined;
+
+      if (resetAnswers || mode === 'clean-restart') {
+        await Answer.deleteMany({ quizId: quiz._id });
+        await Participant.updateMany(
+          { quizId: quiz._id },
+          {
+            $set: {
+              status: 'WAITING',
+              totalScore: 0,
+              baseScore: 0,
+              bonusScore: 0,
+              rank: 0,
+              correctCount: 0,
+              incorrectCount: 0,
+              unansweredCount: 0,
+              cumulativeResponseTimeMs: 0,
+              startedAt: undefined,
+              completedAt: undefined,
+            },
+          }
+        );
+      } else {
+        await Participant.updateMany(
+          { quizId: quiz._id },
+          { $set: { status: 'WAITING', completedAt: undefined } }
+        );
+      }
+
+      await quiz.save();
+
+      if (io) {
+        io.to(`quiz:${quiz._id}`).emit('quiz:status', { status: 'WAITING', quizId: quiz._id, isReset: true });
+        await LeaderboardService.broadcastLeaderboard(io, quiz._id.toString());
+      }
+    } else {
+      // Default: 'reopen' - undo accidental completion and restore test to LIVE
+      const now = new Date();
+      const durationMins = extraMinutes && extraMinutes > 0 ? Number(extraMinutes) : quiz.durationMinutes;
+      const deadline = new Date(now.getTime() + durationMins * 60 * 1000);
+
+      quiz.status = 'LIVE';
+      if (!quiz.actualStartTime) {
+        quiz.actualStartTime = now;
+      }
+      quiz.deadline = deadline;
+      quiz.completedAt = undefined;
+      quiz.pausedAt = undefined;
+      quiz.pauseRemainingSeconds = undefined;
+
+      // Restore participants whose test was ended prematurely
+      await Participant.updateMany(
+        { quizId: quiz._id, status: { $in: ['WAITING', 'COMPLETED'] } },
+        { $set: { status: 'IN_PROGRESS', startedAt: now, completedAt: undefined } }
+      );
+
+      await quiz.save();
+
+      if (io) {
+        io.to(`quiz:${quiz._id}`).emit('quiz:started', {
+          quizId: quiz._id,
+          startTime: now.toISOString(),
+          deadline: deadline.toISOString(),
+          durationMinutes: durationMins,
+          isReopened: true,
+        });
+        io.to(`quiz:${quiz._id}`).emit('quiz:status', { status: 'LIVE', quizId: quiz._id, isReopened: true });
+        await LeaderboardService.broadcastLeaderboard(io, quiz._id.toString());
+      }
+    }
+
+    await AuditLog.create({
+      actorEmail: req.user?.email || 'admin',
+      actorRole: 'admin',
+      action: 'QUIZ_RESTARTED',
+      targetResource: 'Quiz',
+      targetId: quiz._id.toString(),
+      metadata: { mode, status: quiz.status },
     });
 
     res.json({ success: true, quiz });
