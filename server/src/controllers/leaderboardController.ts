@@ -48,37 +48,40 @@ export async function getParticipantResult(req: Request, res: Response, next: Ne
       };
     });
 
+    const resultPayload = {
+      participant: {
+        id: participant._id,
+        name: participant.name,
+        email: participant.email,
+        studentId: participant.studentId,
+        totalScore: participant.totalScore,
+        baseScore: participant.baseScore,
+        bonusScore: participant.bonusScore,
+        rank: participant.rank,
+        correctCount: participant.correctCount,
+        incorrectCount: participant.incorrectCount,
+        unansweredCount: Math.max(0, quiz.totalQuestions - (participant.correctCount + participant.incorrectCount)),
+        accuracy,
+        cumulativeResponseTimeMs: participant.cumulativeResponseTimeMs,
+        status: participant.status,
+        completedAt: participant.completedAt,
+      },
+      quiz: {
+        id: quiz._id,
+        title: quiz.title,
+        maxScore: quiz.maxScore,
+        totalQuestions: quiz.totalQuestions,
+        roomCode: quiz.roomCode,
+        status: quiz.status,
+        feedbackPolicy: quiz.feedbackPolicy,
+      },
+      breakdown,
+    };
+
     res.json({
       success: true,
-      result: {
-        participant: {
-          id: participant._id,
-          name: participant.name,
-          email: participant.email,
-          studentId: participant.studentId,
-          totalScore: participant.totalScore,
-          baseScore: participant.baseScore,
-          bonusScore: participant.bonusScore,
-          rank: participant.rank,
-          correctCount: participant.correctCount,
-          incorrectCount: participant.incorrectCount,
-          unansweredCount: Math.max(0, quiz.totalQuestions - (participant.correctCount + participant.incorrectCount)),
-          accuracy,
-          cumulativeResponseTimeMs: participant.cumulativeResponseTimeMs,
-          status: participant.status,
-          completedAt: participant.completedAt,
-        },
-        quiz: {
-          id: quiz._id,
-          title: quiz.title,
-          maxScore: quiz.maxScore,
-          totalQuestions: quiz.totalQuestions,
-          roomCode: quiz.roomCode,
-          status: quiz.status,
-          feedbackPolicy: quiz.feedbackPolicy,
-        },
-        breakdown,
-      },
+      result: resultPayload,
+      ...resultPayload,
     });
   } catch (error) {
     next(error);

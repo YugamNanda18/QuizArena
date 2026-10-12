@@ -104,6 +104,16 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(payload),
       }),
+    resume: (payload: { roomCode: string; email?: string; studentId?: string }) =>
+      request<{ success: boolean; participant: Participant; quiz: Quiz }>('/registration/resume', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
+    complete: (payload: { quizId: string; participantId: string }) =>
+      request<{ success: boolean; message: string }>('/registration/complete', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }),
     getStatus: (participantId: string) =>
       request<{ success: boolean; participant: Participant; quiz: Quiz }>(`/registration/participant/${participantId}`),
     listForQuiz: (quizId: string) =>
@@ -136,7 +146,7 @@ export const api = {
     get: (quizId: string) =>
       request<{ success: boolean; leaderboard: LeaderboardEntry[] }>(`/leaderboard/quiz/${quizId}`),
     getResult: (quizId: string, participantId: string) =>
-      request<StudentResultResponse>(`/leaderboard/quiz/${quizId}/participant/${participantId}`),
+      request<any>(`/leaderboard/quiz/${quizId}/participant/${participantId}`),
   },
 
   // Analytics

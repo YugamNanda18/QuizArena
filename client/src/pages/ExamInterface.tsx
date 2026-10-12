@@ -28,6 +28,7 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
   const [remainingSeconds, setRemainingSeconds] = useState<number>(quiz.durationMinutes * 60);
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [showSubmitModal, setShowSubmitModal] = useState<boolean>(false);
+  const [showMobileNavigator, setShowMobileNavigator] = useState<boolean>(false);
   const [scoreToast, setScoreToast] = useState<{ points: number; isCorrect?: boolean } | null>(null);
 
   // 1. Load exam questions & submitted answers
@@ -667,9 +668,33 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
           </div>
         </div>
 
+        {/* Mobile Question Navigator Toggle */}
+        <div className="lg:hidden w-full">
+          <button
+            type="button"
+            onClick={() => setShowMobileNavigator(!showMobileNavigator)}
+            className="w-full py-3 px-4 rounded-2xl border text-xs font-bold flex items-center justify-between shadow-md transition-all"
+            style={{
+              backgroundColor: 'var(--bg-card)',
+              borderColor: 'var(--border-subtle)',
+              color: 'var(--text-main)',
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <span>Question {currentIndex + 1} of {questions.length}</span>
+              <span className="text-[10px] opacity-75 font-mono text-emerald-400">({answeredCount} answered)</span>
+            </div>
+            <span className="text-xs font-black" style={{ color: 'var(--accent-color)' }}>
+              {showMobileNavigator ? '▲ Close Navigator' : '▼ View All Questions'}
+            </span>
+          </button>
+        </div>
+
         {/* Right Sidebar Navigator */}
         <div
-          className="lg:col-span-4 rounded-3xl p-6 border shadow-2xl space-y-5 backdrop-blur-xl"
+          className={`rounded-3xl p-5 sm:p-6 border shadow-2xl space-y-4 sm:space-y-5 backdrop-blur-xl ${
+            showMobileNavigator ? 'block' : 'hidden lg:block'
+          } lg:col-span-4`}
           style={{
             backgroundColor: 'var(--bg-card)',
             borderColor: 'var(--border-subtle)',
@@ -854,11 +879,32 @@ export const ExamInterface: React.FC<ExamInterfaceProps> = ({
               </button>
               <button
                 type="button"
-                disabled={!isSubmissionAllowed}
-                onClick={() => {
-                  sounds.playFanfare();
-                  setShowSubmitModal(false);
-                  onCompleted();
+                disabled={!isSubmissionAllowed || submitting}
+                onClick={async () => {
+                  try {
+                    sounds.playFanfare();
+                    setShowSubmitModal(false);
+                    const quizId = (quiz.id || quiz._id) as string;
+                    const participantId = (participant.id || participant._id) as string;
+
+                    // Authoritatively complete quiz on server
+                    await api.registration.complete({ quizId, participantId });
+
+                    // Mark local session as COMPLETED
+                    const saved = localStorage.getItem('qa_student_session');
+                    if (saved) {
+                      try {
+                        const parsed = JSON.parse(saved);
+                        localStorage.setItem('qa_student_session', JSON.stringify({ ...parsed, status: 'COMPLETED' }));
+                      } catch {
+                        // ignore
+                      }
+                    }
+                  } catch (err) {
+                    console.error('Error completing test:', err);
+                  } finally {
+                    onCompleted();
+                  }
                 }}
                 className={`flex-1 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-transform ${
                   isSubmissionAllowed

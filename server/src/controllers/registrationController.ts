@@ -4,6 +4,7 @@ import { Participant } from '../models/Participant';
 import { AppError } from '../middleware/errorHandler';
 import { studentRegistrationSchema } from '../validators/schemas';
 import { getIO } from '../socket/socketHandler';
+import { LeaderboardService } from '../services/leaderboardService';
 
 export async function registerStudent(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -170,3 +171,96 @@ export async function listParticipantsForQuiz(req: Request, res: Response, next:
     next(error);
   }
 }
+
+export async function resumeStudentQuiz(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { roomCode, email, studentId } = req.body;
+    if (!roomCode || (!email && !studentId)) {
+      throw new AppError('Room code and either Email or Student ID are required to resume.', 400);
+    }
+
+    const quiz = await Quiz.findOne({ roomCode: roomCode.trim().toUpperCase() });
+    if (!quiz) {
+      throw new AppError(`Quiz room "${roomCode.toUpperCase()}" not found. Please verify the room code.`, 404);
+    }
+
+    const query: any = { quizId: quiz._id };
+    if (email && email.trim()) {
+      query.email = email.trim().toLowerCase();
+    } else if (studentId && studentId.trim()) {
+      query.studentId = studentId.trim();
+    }
+
+    const participant = await Participant.findOne(query);
+    if (!participant) {
+      throw new AppError('No registered candidate was found with these credentials for this room code. Please register first.', 404);
+    }
+
+    res.json({
+      success: true,
+      participant: {
+        id: participant._id,
+        name: participant.name,
+        email: participant.email,
+        studentId: participant.studentId,
+        status: participant.status,
+        totalScore: participant.totalScore,
+        baseScore: participant.baseScore,
+        bonusScore: participant.bonusScore,
+        rank: participant.rank,
+        correctCount: participant.correctCount,
+        incorrectCount: participant.incorrectCount,
+        unansweredCount: participant.unansweredCount,
+        cumulativeResponseTimeMs: participant.cumulativeResponseTimeMs,
+      },
+      quiz: {
+        id: quiz._id,
+        title: quiz.title,
+        roomCode: quiz.roomCode,
+        status: quiz.status,
+        durationMinutes: quiz.durationMinutes,
+        startTime: quiz.actualStartTime,
+        deadline: quiz.deadline,
+        maxScore: quiz.maxScore,
+        scoringSettings: quiz.scoringSettings,
+        feedbackPolicy: quiz.feedbackPolicy,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function completeStudentQuiz(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { quizId, participantId } = req.body;
+    if (!quizId || !participantId) {
+      throw new AppError('Quiz ID and Participant ID are required.', 400);
+    }
+
+    const participant = await Participant.findOne({ _id: participantId, quizId });
+    if (!participant) {
+      throw new AppError('Participant not found for this quiz.', 404);
+    }
+
+    participant.status = 'COMPLETED';
+    participant.completedAt = new Date();
+    await participant.save();
+
+    // Recompute and broadcast leaderboard
+    const io = getIO();
+    if (io) {
+      await LeaderboardService.broadcastLeaderboard(io, quizId);
+    } else {
+      await LeaderboardService.getAndRecomputeLeaderboard(quizId);
+    }
+
+    res.json({
+      success: true,
+      message: 'Assessment completed and submitted successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+

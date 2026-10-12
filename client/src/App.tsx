@@ -15,6 +15,7 @@ import { api } from './services/api';
 export const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('student-landing');
   const [adminToken, setAdminToken] = useState<string | null>(() => localStorage.getItem('qa_admin_token'));
+  const [isRestoringSession, setIsRestoringSession] = useState<boolean>(() => !!localStorage.getItem('qa_student_session'));
 
   // Active student session
   const [activeQuizId, setActiveQuizId] = useState<string>('');
@@ -42,6 +43,7 @@ export const App: React.FC = () => {
       const reqView = params.get('view');
       if (reqView === 'admin') {
         setCurrentView(adminToken ? 'admin-dashboard' : 'admin-login');
+        setIsRestoringSession(false);
         return;
       }
     } catch {
@@ -59,6 +61,10 @@ export const App: React.FC = () => {
           api.registration
             .getStatus(parsed.participantId)
             .then((res) => {
+              const qId = (res.quiz.id || res.quiz._id) as string;
+              const pId = (res.participant.id || res.participant._id) as string;
+              setActiveQuizId(qId);
+              setActiveParticipantId(pId);
               setActiveQuiz(res.quiz);
               setActiveParticipant(res.participant);
 
@@ -71,13 +77,19 @@ export const App: React.FC = () => {
               }
             })
             .catch(() => {
-              // Stale or invalid session - keep on landing
               localStorage.removeItem('qa_student_session');
+            })
+            .finally(() => {
+              setIsRestoringSession(false);
             });
+        } else {
+          setIsRestoringSession(false);
         }
       } catch (e) {
-        // ignore
+        setIsRestoringSession(false);
       }
+    } else {
+      setIsRestoringSession(false);
     }
   }, [adminToken]);
 
@@ -90,12 +102,38 @@ export const App: React.FC = () => {
   const handleStudentRegistered = useCallback((quizId: string, participantId: string) => {
     setActiveQuizId(quizId);
     setActiveParticipantId(participantId);
+    localStorage.setItem('qa_student_session', JSON.stringify({ quizId, participantId }));
     setCurrentView('student-waiting');
   }, []);
 
-  const handleTestStarted = useCallback((quiz: Quiz, participant: Participant) => {
+  const handleStudentResumed = useCallback((quiz: Quiz, participant: Participant, targetView?: string) => {
+    const qId = (quiz.id || quiz._id) as string;
+    const pId = (participant.id || participant._id) as string;
+    setActiveQuizId(qId);
+    setActiveParticipantId(pId);
     setActiveQuiz(quiz);
     setActiveParticipant(participant);
+    localStorage.setItem('qa_student_session', JSON.stringify({ quizId: qId, participantId: pId }));
+
+    if (targetView) {
+      setCurrentView(targetView);
+    } else if (participant.status === 'COMPLETED' || quiz.status === 'COMPLETED') {
+      setCurrentView('student-results');
+    } else if (quiz.status === 'LIVE' || participant.status === 'IN_PROGRESS') {
+      setCurrentView('student-exam');
+    } else {
+      setCurrentView('student-waiting');
+    }
+  }, []);
+
+  const handleTestStarted = useCallback((quiz: Quiz, participant: Participant) => {
+    const qId = (quiz.id || quiz._id) as string;
+    const pId = (participant.id || participant._id) as string;
+    setActiveQuizId(qId);
+    setActiveParticipantId(pId);
+    setActiveQuiz(quiz);
+    setActiveParticipant(participant);
+    localStorage.setItem('qa_student_session', JSON.stringify({ quizId: qId, participantId: pId }));
     setCurrentView('student-exam');
   }, []);
 
@@ -119,15 +157,31 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 pb-16">
+        {/* Session Restoring Loader */}
+        {isRestoringSession && (
+          <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4 px-4 text-center">
+            <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold" style={{ color: 'var(--text-main)' }}>
+                Restoring Active Assessment Session...
+              </h3>
+              <p className="text-xs opacity-75 font-mono" style={{ color: 'var(--text-muted)' }}>
+                Reconnecting with proctor server & synchronizing answers
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Student Views */}
-        {currentView === 'student-landing' && (
+        {!isRestoringSession && currentView === 'student-landing' && (
           <StudentLandingPage
             initialRoomCode={urlRoomCode}
             onRegistered={handleStudentRegistered}
+            onResumed={handleStudentResumed}
           />
         )}
 
-        {currentView === 'student-waiting' && (
+        {!isRestoringSession && currentView === 'student-waiting' && (
           activeQuizId && activeParticipantId ? (
             <WaitingRoom
               quizId={activeQuizId}
@@ -138,11 +192,12 @@ export const App: React.FC = () => {
             <StudentLandingPage
               initialRoomCode={urlRoomCode}
               onRegistered={handleStudentRegistered}
+              onResumed={handleStudentResumed}
             />
           )
         )}
 
-        {currentView === 'student-exam' && (
+        {!isRestoringSession && currentView === 'student-exam' && (
           activeQuiz && activeParticipant ? (
             <ExamInterface
               quiz={activeQuiz}
@@ -159,7 +214,7 @@ export const App: React.FC = () => {
           )
         )}
 
-        {currentView === 'student-results' && (
+        {!isRestoringSession && currentView === 'student-results' && (
           activeQuizId && activeParticipantId ? (
             <ResultsPage
               quizId={activeQuizId}
@@ -170,6 +225,7 @@ export const App: React.FC = () => {
             <StudentLandingPage
               initialRoomCode={urlRoomCode}
               onRegistered={handleStudentRegistered}
+              onResumed={handleStudentResumed}
             />
           )
         )}
